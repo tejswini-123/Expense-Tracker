@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <nav class="navbar dashboard-nav">
+
+        <div class="logo">💰 Expense Tracker</div>
+
+        <div>
+            <span class="admin-name">👨‍💼 Administrator</span>
+
+            <button onclick="logout()" class="logout-btn">
+                Logout
+            </button>
+        </div>
+
+    </nav>
+
+    <main class="dashboard">
+
+        <div class="dashboard-heading">
+
+            <div>
+                <p class="small-title">ADMIN MODULE</p>
+                <h1>Admin Dashboard ⚡</h1>
+                <p>Monitor users and expense records.</p>
+            </div>
+
+        </div>
+
+        <div class="stats">
+
+            <div class="stat-card purple">
+                <div class="stat-icon">👥</div>
+                <p>Registered Users</p>
+                <h2 id="userCount">0</h2>
+            </div>
+
+            <div class="stat-card pink">
+                <div class="stat-icon">🧾</div>
+                <p>Total Expenses</p>
+                <h2 id="adminExpenseCount">0</h2>
+            </div>
+
+            <div class="stat-card green">
+                <div class="stat-icon">💰</div>
+                <p>Total Amount</p>
+                <h2 id="adminTotal">₹0</h2>
+            </div>
+
+        </div>
+
+        <div class="content-card">
+
+            <h2>Registered Users</h2>
+
+            <div id="userTable"></div>
+
+        </div>
+
+        <div class="content-card">
+
+            <h2>All Expense Records</h2>
+
+            <div id="adminExpenseList"></div>
+
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
