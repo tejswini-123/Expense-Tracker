@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Routes,
@@ -66,7 +65,13 @@ function Signup({ users, setUsers }) {
   function handleSignup(e) {
     e.preventDefault();
 
+    const cleanName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName) {
+      alert("Please enter your name.");
+      return;
+    }
 
     if (cleanEmail === "admin@gmail.com") {
       alert("This email is reserved for Admin.");
@@ -80,7 +85,7 @@ function Signup({ users, setUsers }) {
 
     const newUser = {
       id: Date.now(),
-      name,
+      name: cleanName,
       email: cleanEmail,
       password,
       role: "user"
@@ -256,6 +261,9 @@ function UserDashboard({
     hasBudget ? String(savedBudget) : ""
   );
 
+  // Controls whether the user is editing the monthly budget
+  const [isEditingBudget, setIsEditingBudget] = useState(!hasBudget);
+
   // Get only the logged-in user's expenses
   const myExpenses = expenses.filter(
     e => e.user === user.email
@@ -291,6 +299,7 @@ function UserDashboard({
       [user.email]: newBudget
     }));
 
+    setIsEditingBudget(false);
     alert("Monthly budget updated successfully!");
   }
 
@@ -298,10 +307,22 @@ function UserDashboard({
   function addExpense(e) {
     e.preventDefault();
 
+    const cleanTitle = title.trim();
+    const cleanAmount = Number(amount);
+
+    if (
+      !cleanTitle ||
+      !Number.isFinite(cleanAmount) ||
+      cleanAmount <= 0
+    ) {
+      alert("Enter an expense name and an amount greater than zero.");
+      return;
+    }
+
     const newExpense = {
       id: Date.now(),
-      title,
-      amount: Number(amount),
+      title: cleanTitle,
+      amount: cleanAmount,
       category,
       user: user.email,
       date: new Date().toLocaleDateString()
@@ -363,23 +384,59 @@ function UserDashboard({
         />
       </div>
 
-      {/* MINIMAL MONTHLY BUDGET SECTION */}
+      {/* MONTHLY BUDGET SECTION */}
       <div className="content-card">
-        <form onSubmit={saveBudget} className="expense-form">
-          <input
-            type="number"
-            min="1"
-            step="0.01"
-            placeholder="Enter Your Monthly Budget (₹)"
-            value={budgetInput}
-            onChange={e => setBudgetInput(e.target.value)}
-            required
-          />
+        {!isEditingBudget && hasBudget ? (
+          <div>
+            <h2>Monthly Budget</h2>
+            <h1>₹{budget.toLocaleString("en-IN")}</h1>
+            <p>Your current monthly budget</p>
 
-          <button className="main-btn" type="submit">
-            Save Budget
-          </button>
-        </form>
+            <button
+              className="main-btn"
+              type="button"
+              onClick={() => {
+                setBudgetInput(String(budget));
+                setIsEditingBudget(true);
+              }}
+            >
+              ✏️ Edit Budget
+            </button>
+          </div>
+        ) : (
+          <div>
+            <h2>{hasBudget ? "Edit Monthly Budget" : "Set Monthly Budget"}</h2>
+
+            <form onSubmit={saveBudget} className="expense-form">
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                placeholder="Enter Your Monthly Budget (₹)"
+                value={budgetInput}
+                onChange={e => setBudgetInput(e.target.value)}
+                required
+              />
+
+              <button className="main-btn" type="submit">
+                {hasBudget ? "Update Budget" : "Save Budget"}
+              </button>
+
+              {hasBudget && (
+                <button
+                  type="button"
+                  className="logout-btn"
+                  onClick={() => {
+                    setBudgetInput(String(budget));
+                    setIsEditingBudget(false);
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </form>
+          </div>
+        )}
       </div>
 
       {/* ADD NEW EXPENSE */}
@@ -442,11 +499,19 @@ function UserDashboard({
 }
 
 // ADMIN DASHBOARD
-function AdminDashboard({ users, expenses }) {
+function AdminDashboard({ users, expenses, setExpenses }) {
   const total = expenses.reduce(
     (sum, e) => sum + Number(e.amount),
     0
   );
+
+  function deleteExpense(id) {
+    if (!window.confirm("Delete this expense? This cannot be undone.")) {
+      return;
+    }
+
+    setExpenses(prev => prev.filter(expense => expense.id !== id));
+  }
 
   return (
     <main className="dashboard">
@@ -500,13 +565,17 @@ function AdminDashboard({ users, expenses }) {
       <div className="content-card">
         <h2>All Expenses</h2>
 
-        {expenses.map(e => (
-          <ExpenseItem
-            key={e.id}
-            expense={e}
-            onDelete={() => {}}
-          />
-        ))}
+        {expenses.length === 0 ? (
+          <p>No expenses have been added.</p>
+        ) : (
+          expenses.map(expense => (
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onDelete={deleteExpense}
+            />
+          ))
+        )}
       </div>
     </main>
   );
@@ -636,6 +705,7 @@ export default function App() {
               <AdminDashboard
                 users={users}
                 expenses={expenses}
+                setExpenses={setExpenses}
               />
             </ProtectedRoute>
           }
