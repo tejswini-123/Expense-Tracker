@@ -480,11 +480,17 @@ function UserDashboard({
   expenses,
   setExpenses,
   budgets,
-  setBudgets
+  setBudgets,
+  savingsGoals,
+  setSavingsGoals
 }) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Food");
+  const [goalTitle, setGoalTitle] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalInitialSaved, setGoalInitialSaved] = useState("0");
+  const [contributions, setContributions] = useState({});
 
   // Get this user's saved budget
   const savedBudget = budgets[user.email];
@@ -501,6 +507,11 @@ function UserDashboard({
   // Get only the logged-in user's expenses
   const myExpenses = expenses.filter(
     e => e.user === user.email
+  );
+
+  // Get only this user's savings goals
+  const mySavingsGoals = savingsGoals.filter(
+    goal => goal.user === user.email
   );
 
   // Calculate total expenses
@@ -535,6 +546,56 @@ function UserDashboard({
 
     setIsEditingBudget(false);
     alert("Monthly budget updated successfully!");
+  }
+
+  // CREATE A SAVINGS GOAL
+  function addSavingsGoal(e) {
+    e.preventDefault();
+    const cleanTitle = goalTitle.trim();
+    const target = Number(goalTarget);
+    const initialSaved = Number(goalInitialSaved || 0);
+
+    if (!cleanTitle || !Number.isFinite(target) || target <= 0 ||
+        !Number.isFinite(initialSaved) || initialSaved < 0 || initialSaved > target) {
+      alert("Enter a valid goal name, target amount, and saved amount not greater than the target.");
+      return;
+    }
+
+    const newGoal = {
+      id: Date.now(),
+      title: cleanTitle,
+      target,
+      saved: initialSaved,
+      user: user.email
+    };
+    setSavingsGoals(prev => [...prev, newGoal]);
+    setGoalTitle("");
+    setGoalTarget("");
+    setGoalInitialSaved("0");
+    alert("Savings goal created successfully!");
+  }
+
+  // ADD MONEY TO A SAVINGS GOAL
+  function addGoalContribution(goal) {
+    const contribution = Number(contributions[goal.id]);
+    if (!Number.isFinite(contribution) || contribution <= 0) {
+      alert("Enter an amount greater than zero.");
+      return;
+    }
+    if (goal.saved + contribution > goal.target) {
+      alert("This amount is more than the remaining goal amount.");
+      return;
+    }
+    setSavingsGoals(prev => prev.map(item =>
+      item.id === goal.id ? { ...item, saved: item.saved + contribution } : item
+    ));
+    setContributions(prev => ({ ...prev, [goal.id]: "" }));
+  }
+
+  // DELETE A SAVINGS GOAL
+  function deleteSavingsGoal(id) {
+    if (!window.confirm("Delete this savings goal?")) return;
+    setSavingsGoals(prev => prev.filter(goal => goal.id !== id));
   }
 
   // ADD EXPENSE
@@ -678,6 +739,89 @@ function UserDashboard({
         expenses={myExpenses}
         budget={budget}
       />
+
+      {/* SAVINGS GOALS TRACKER */}
+      <section className="content-card savings-goals">
+        <div className="savings-heading">
+          <div>
+            <h2>🎯 Savings Goals Tracker</h2>
+            <p>Create a target, track your progress, and build your savings step by step.</p>
+          </div>
+        </div>
+
+        <form onSubmit={addSavingsGoal} className="expense-form savings-goal-form">
+          <input
+            placeholder="Goal name (e.g. Buy a Laptop)"
+            value={goalTitle}
+            onChange={e => setGoalTitle(e.target.value)}
+            required
+          />
+          <input
+            type="number"
+            min="1"
+            step="0.01"
+            placeholder="Target amount (₹)"
+            value={goalTarget}
+            onChange={e => setGoalTarget(e.target.value)}
+            required
+          />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Already saved (₹)"
+            value={goalInitialSaved}
+            onChange={e => setGoalInitialSaved(e.target.value)}
+          />
+          <button className="main-btn" type="submit">+ Create Goal</button>
+        </form>
+
+        {mySavingsGoals.length === 0 ? (
+          <p className="savings-empty">You have not created any savings goals yet. Create your first goal above!</p>
+        ) : (
+          <div className="savings-goal-grid">
+            {mySavingsGoals.map(goal => {
+              const progress = Math.min((goal.saved / goal.target) * 100, 100);
+              const remainingToSave = Math.max(goal.target - goal.saved, 0);
+              const completed = goal.saved >= goal.target;
+              return (
+                <div className="savings-goal-card" key={goal.id}>
+                  <div className="savings-goal-top">
+                    <h3>{goal.title}</h3>
+                    <button type="button" className="goal-delete-btn" onClick={() => deleteSavingsGoal(goal.id)}>Delete</button>
+                  </div>
+                  <div className="savings-goal-amounts">
+                    <strong>₹{Number(goal.saved).toLocaleString("en-IN")}</strong>
+                    <span>of ₹{Number(goal.target).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="savings-progress-track">
+                    <div className="savings-progress-fill" style={{ width: `${progress}%` }} />
+                  </div>
+                  <div className="savings-progress-label">
+                    <span>{progress.toFixed(1)}% completed</span>
+                    <span>{completed ? "Goal achieved! 🎉" : `₹${remainingToSave.toLocaleString("en-IN")} left`}</span>
+                  </div>
+                  {!completed && (
+                    <form className="goal-contribution-form" onSubmit={e => { e.preventDefault(); addGoalContribution(goal); }}>
+                      <input
+                        type="number"
+                        min="0.01"
+                        max={remainingToSave}
+                        step="0.01"
+                        placeholder="Add savings (₹)"
+                        value={contributions[goal.id] || ""}
+                        onChange={e => setContributions(prev => ({ ...prev, [goal.id]: e.target.value }))}
+                        required
+                      />
+                      <button type="submit" className="main-btn">Add Savings</button>
+                    </form>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* ADD NEW EXPENSE */}
       <div className="content-card">
@@ -855,6 +999,11 @@ export default function App() {
     () => JSON.parse(localStorage.getItem("budgets") || "{}")
   );
 
+  // Store savings goals for all users in Local Storage
+  const [savingsGoals, setSavingsGoals] = useState(
+    () => JSON.parse(localStorage.getItem("savingsGoals") || "[]")
+  );
+
   // SAVE USERS
   useEffect(() => {
     localStorage.setItem("users", JSON.stringify(users));
@@ -881,6 +1030,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("budgets", JSON.stringify(budgets));
   }, [budgets]);
+
+  // SAVE ALL SAVINGS GOALS
+  useEffect(() => {
+    localStorage.setItem("savingsGoals", JSON.stringify(savingsGoals));
+  }, [savingsGoals]);
 
   function logout() {
     setCurrentUser(null);
@@ -933,6 +1087,8 @@ export default function App() {
                 setExpenses={setExpenses}
                 budgets={budgets}
                 setBudgets={setBudgets}
+                savingsGoals={savingsGoals}
+                setSavingsGoals={setSavingsGoals}
               />
             </ProtectedRoute>
           }
